@@ -1,4 +1,3 @@
-#![feature(associated_consts)]
 extern crate asn1;
 use asn1::BitString;
 use asn1::aper::{self, APerElement, Constraint, Constraints, Encoding, UNCONSTRAINED};

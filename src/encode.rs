@@ -137,7 +137,7 @@ impl Encoder {
     }
 
     /// Append `other` to the end of `self`, starting with the `r_padding`th LSB of `self`.
-    pub fn append(&mut self, other: &Encoder) -> Result<(), EncodeError> {
+    pub fn append(&mut self, other: &Encoder) {
         let mut bytes = other.bytes().clone();
         let r_padding = other.r_padding();
 
@@ -146,11 +146,11 @@ impl Encoder {
         if n == 0 {
             self.bytes.append(&mut bytes);
             self.r_padding = r_padding;
-            return Ok(());
+            return;
         }
 
         if bytes.len() == 0 {
-            return Ok(());
+            return;
         }
 
         // Fill LSBs of self.bytes first
@@ -171,8 +171,6 @@ impl Encoder {
 
         // Just append everything else
         self.bytes.append(&mut bytes);
-
-        Ok(())
     }
 
     /// Get a reference to the bytes of an encoder.
@@ -264,7 +262,7 @@ pub fn encode_int(value: i64, min: Option<i64>, max: Option<i64>) -> Result<Enco
         bytes
             .write_uint::<BigEndian>(v as u64, len)
             .map_err(|_| EncodeError::WriteError)?;
-        enc.append(&Encoder::with_bytes(bytes))?;
+        enc.append(&Encoder::with_bytes(bytes));
         return Ok(enc);
     }
 
@@ -281,6 +279,6 @@ pub fn encode_int(value: i64, min: Option<i64>, max: Option<i64>) -> Result<Enco
             .write_uint::<BigEndian>(value as u64, len)
             .map_err(|_| EncodeError::WriteError)?,
     }
-    enc.append(&Encoder::with_bytes(bytes))?;
+    enc.append(&Encoder::with_bytes(bytes));
     Ok(enc)
 }

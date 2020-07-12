@@ -27,8 +27,7 @@ impl APerEncode for Foo {
             .to_aper(Constraints {
                 value: None,
                 size: Some(Constraint::new(None, Some(4))),
-            })
-            .unwrap();
+            })?;
 
         enc.append(
             &self
@@ -36,10 +35,8 @@ impl APerEncode for Foo {
                 .to_aper(Constraints {
                     value: None,
                     size: Some(Constraint::new(None, Some(3))),
-                })
-                .unwrap(),
-        )
-        .unwrap();
+                })?,
+        );
 
         enc.append(
             &self
@@ -49,10 +46,8 @@ impl APerEncode for Foo {
                     value: Some(Constraint::new(None, Some(4))),
                     // "size" behaves normally
                     size: Some(Constraint::new(None, Some(2))),
-                })
-                .unwrap(),
-        )
-        .unwrap();
+                })?,
+        );
 
         Ok(enc)
     }
@@ -67,7 +62,7 @@ impl APerDecode for Foo {
                 value: None,
                 size: Some(Constraint::new(None, Some(4))),
             },
-        );
+        )?;
 
         let bar = Vec::<u8>::from_aper(
             decoder,
@@ -75,7 +70,7 @@ impl APerDecode for Foo {
                 value: None,
                 size: Some(Constraint::new(None, Some(3))),
             },
-        );
+        )?;
 
         let baz = Vec::<BitString>::from_aper(
             decoder,
@@ -85,22 +80,12 @@ impl APerDecode for Foo {
                 // "size" behaves normally
                 size: Some(Constraint::new(None, Some(2))),
             },
-        );
-
-        if foo.is_err() {
-            return Err(foo.err().unwrap());
-        }
-        if bar.is_err() {
-            return Err(bar.err().unwrap());
-        }
-        if baz.is_err() {
-            return Err(baz.err().unwrap());
-        }
+        )?;
 
         Ok(Foo {
-            foo: foo.unwrap(),
-            bar: bar.unwrap(),
-            baz: baz.unwrap(),
+            foo,
+            bar,
+            baz,
         })
     }
 }

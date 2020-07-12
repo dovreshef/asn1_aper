@@ -22,7 +22,7 @@ impl<T: APerEncode> APerEncode for Vec<T> {
                 value: None,
                 size: constraints.value,
             })?;
-            enc.append(&val)?;
+            enc.append(&val);
         }
         Ok(enc)
     }

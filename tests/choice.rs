@@ -23,27 +23,25 @@ impl APerEncode for Foo {
     const CONSTRAINTS: Constraints = UNCONSTRAINED;
 
     fn to_aper(&self, _: Constraints) -> Result<Encoder, EncodeError> {
-        let mut enc = (false as ExtensionMarker).to_aper(UNCONSTRAINED).unwrap();
+        let mut enc = (false as ExtensionMarker).to_aper(UNCONSTRAINED)?;
         match *self {
             Foo::Foo { ref a } => {
-                enc.append(&encode_int(0, Some(0), Some(2)).unwrap()).unwrap();
+                enc.append(&encode_int(0, Some(0), Some(2))?);
                 enc.append(
                     &a.to_aper(Constraints {
                         value: None,
                         size: Some(Constraint::new(None, Some(4))),
-                    })
-                    .unwrap(),
-                )
-                .unwrap();
+                    })?,
+                );
             }
             Foo::Bar { ref a } => {
-                enc.append(&encode_int(1, Some(0), Some(2)).unwrap()).unwrap();
-                enc.append(&a.to_aper(UNCONSTRAINED).unwrap()).unwrap();
+                enc.append(&encode_int(1, Some(0), Some(2))?);
+                enc.append(&a.to_aper(UNCONSTRAINED)?);
             }
             Foo::Baz { ref a, ref b } => {
-                enc.append(&encode_int(2, Some(0), Some(2)).unwrap()).unwrap();
-                enc.append(&a.to_aper(UNCONSTRAINED).unwrap()).unwrap();
-                enc.append(&b.to_aper(UNCONSTRAINED).unwrap()).unwrap();
+                enc.append(&encode_int(2, Some(0), Some(2))?);
+                enc.append(&a.to_aper(UNCONSTRAINED)?);
+                enc.append(&b.to_aper(UNCONSTRAINED)?);
             }
         };
         Ok(enc)
@@ -95,16 +93,12 @@ impl APerDecode for Foo {
                 }
             }
             2 => {
-                let a = u8::from_aper(decoder, UNCONSTRAINED);
-                let b = u16::from_aper(decoder, UNCONSTRAINED);
-                if a.is_err() || b.is_err() {
-                    Err(a.err().unwrap())
-                } else {
-                    Ok(Foo::Baz {
-                        a: a.unwrap(),
-                        b: b.unwrap(),
-                    })
-                }
+                let a = u8::from_aper(decoder, UNCONSTRAINED)?;
+                let b = u16::from_aper(decoder, UNCONSTRAINED)?;
+                Ok(Foo::Baz {
+                    a,
+                    b,
+                })
             }
             _ => Err(DecodeError::InvalidChoice),
         }

@@ -1,10 +1,8 @@
-This crate provides tools for encoding and decoding ASN.1 messages.
-
-Currently, only the Aligned Packed Encoding Rules (APER) are supported.
+This crate provides tools for encoding and decoding APER (Aligned Packed Encoding Rules) ASN.1 messages.
 
 # Documentation
 
-See [https://melvinw.github.io/rust-asn1/asn1](https://melvinw.github.io/rust-asn1/asn1).
+Run `cargo doc --open`
 
 # Usage
 
@@ -12,61 +10,73 @@ Add the following to your `Cargo.toml`.
 
 ```rust
 [dependencies]
-asn1 = { git = "https://github.com/melvinw/rust-asn1" }
+asn1 = { git = "https://github.com/dovreshef/asn1_aper" }
 ```
 
-To encode/decode your own types, just implement the `APerElement` trait. Below is an example for a simple ASN.1 messsage, `foo`.
+To encode/decode your own types, just implement the `APerEncode`\\`APerDecode` traits. Below is an example of a decode operation.
+
+let's consider an enum that corresponds to the ASN.1 Choice type below. (Note the extension marker)
 
 ```
-foo ::= SEQUENCE {
-    bar BIT STRING(SIZE(4)
-    baz INTEGER(0..4294967295)
+Foo ::= SEQUENCE {
+    a BIT STRING(SIZE(4))
+}
+
+Bar ::= SEQUENCE {
+    a OCTET STRING
+}
+
+Baz ::= SEQUENCE {
+    a INTEGER(0..255)
+    b INTEGER(0..65535)
+}
+
+MyMsg ::= CHOICE {
+    foo Foo
+    bar Bar
+    baz Baz
+    ...
 }
 ```
 
 ```rust
-#![feature(associated_consts)]
-extern crate asn1;
-use asn1::BitString;
-use asn1::aper::{self, APerElement, Constraint, Constraints, UNCONSTRAINED};
+use asn1_aper::{BitString, APerDecode, Constraint, Constraints, UNCONSTRAINED};
 
-struct foo {
-    pub bar: BitString,
-    pub baz: u32,
+enum MyMsg {
+    foo { a: BitString, },
+    bar { a: Vec<u8>, },
+    baz { a: u8, b: u16, },
 }
 
-impl APerElement for Foo {
+impl APerDecode for MyMsg {
     const CONSTRAINTS: Constraints = UNCONSTRAINED;
-    fn from_aper(decoder: &mut aper::Decoder, constraints: Constraints) -> Result<Self, aper::DecodeError> {
-        let bar = BitString::from_aper(decoder , Constraints {
-            value: None,
-            size: Some(Constraint::new(Some(4), Some(4))),
-        });
+    fn from_aper(decoder: &mut Decoder, constraints: Constraints) -> Result<Self, DecodeError> {
+        let is_ext = ExtensionMarker::from_aper(decoder, UNCONSTRAINED)?;
 
-        let mut baz = u32::from_aper(decoder, UNCONSTRAINED);
+        let choice = decoder.decode_int(Some(0), Some(2))?;
 
-        if bar.is_err() {
-            return Err(bar.err().unwrap());
+        match choice {
+            0 => {
+                let bs = BitString::from_aper(decoder , Constraints {
+                    value: None,
+                    size: Some(Constraint::new(None, Some(4))),
+                })?;
+                 Ok(MyMsg::foo{ a: bs })
+            },
+            1 => {
+                let v = Vec::<u8>::from_aper(decoder, Constraints {
+                    value: None,
+                    size: Some(Constraint::new(None, Some(3))),
+                })?;
+                Ok(MyMsg::bar{ a: v, })
+            },
+            2 => {
+                let a = u8::from_aper(decoder, UNCONSTRAINED)?;
+                let b = u16::from_aper(decoder, UNCONSTRAINED)?;
+                Ok(MyMsg::baz{ a, b, })
+            }
+            _ => Err(aper::DecodeError::InvalidChoice)
         }
-        if baz.is_err() {
-            return Err(baz.err().unwrap());
-        }
-
-        Ok(Foo{
-            bar: bar.unwrap(),
-            baz: baz.unwrap(),
-        })
-    }
-
-    fn to_aper(&self, constraints: Constraints) -> Result<Encoding, aper::EncodeError> {
-        let mut enc = self.bar.to_aper(Constraints {
-            value: None,
-            size: Some(Constraint::new(None, Some(4))),
-        }).unwrap();
-
-        enc.append(&self.baz.to_aper(UNCONSTRAINED).unwrap());
-
-        Ok(enc)
     }
 }
 ```

@@ -1,6 +1,14 @@
-use aper::{APerElement, Constraints, Decoder, DecodeError, Encoding, EncodeError};
+use crate::{
+    utils::shift_bytes_left,
+    APerDecode,
+    APerEncode,
+    Constraints,
+    DecodeError,
+    Decoder,
+    EncodeError,
+    Encoder,
+};
 use std::cmp;
-use utils::shift_bytes_left;
 
 /// A bit string.
 ///
@@ -21,7 +29,7 @@ pub struct BitString {
 }
 
 impl BitString {
-    /// Consturct a `BitString` of length `n` with all values set to 0.
+    /// Construct a `BitString` of length `n` with all values set to 0.
     pub fn with_len(n: usize) -> BitString {
         let mut ret = BitString {
             data: Vec::<u8>::with_capacity(n / 8),
@@ -31,7 +39,7 @@ impl BitString {
         ret
     }
 
-    /// Consturct a `BitString` of length `n` with initial values contained in `data`.
+    /// Construct a `BitString` of length `n` with initial values contained in `data`.
     ///
     /// # Examples
     ///
@@ -91,51 +99,20 @@ impl BitString {
     }
 }
 
-impl APerElement for BitString {
+impl APerEncode for BitString {
     const CONSTRAINTS: Constraints = Constraints {
         value: None,
         size: None,
     };
 
-    /// Construct a `BitString` from an aligned PER encoding.
-    fn from_aper(decoder: &mut Decoder, constraints: Constraints) -> Result<Self, DecodeError> {
-        if constraints.size.is_none() {
-            return Err(DecodeError::MissingSizeConstraint);
-        }
-
-        let sz_constr = constraints.size.unwrap();
-        if sz_constr.max().is_none() || sz_constr.max().unwrap() == 0 {
-            return Ok(BitString::with_len(0));
-        }
-
-        let len = sz_constr.max().unwrap() as usize;
-        if len >= 65535 {
-            unimplemented!();
-        }
-
-        let num_bytes = (len as f64 / 8.).ceil() as usize;
-        let mut content: Vec<u8> = Vec::with_capacity(num_bytes);
-        let ret = decoder.read_to_vec(&mut content, len);
-        if ret.is_err() {
-            return Err(ret.err().unwrap());
-        }
-
-        let delta = num_bytes * 8 - len;
-        if delta > 0 && num_bytes > 1 {
-            shift_bytes_left(&mut content, delta);
-        }
-
-        Ok(BitString::with_bytes_and_len(&content, len))
-    }
-
-    fn to_aper(&self, constraints: Constraints) -> Result<Encoding, EncodeError> {
+    fn to_aper(&self, constraints: Constraints) -> Result<Encoder, EncodeError> {
         if constraints.size.is_none() {
             return Err(EncodeError::MissingSizeConstraint);
         }
 
         let sz_constr = constraints.size.unwrap();
         if sz_constr.max().is_none() || sz_constr.max().unwrap() == 0 {
-            return Ok(Encoding::new());
+            return Ok(Encoder::new());
         }
 
         let len = sz_constr.max().unwrap() as usize;
@@ -152,7 +129,38 @@ impl APerElement for BitString {
         }
         let mut bytes = self.data.clone();
         shift_bytes_left(&mut bytes, l_padding); // XXX: this is incorrect for n_bits > 8
-        let enc = Encoding::with_bytes_and_padding(bytes, r_padding + l_padding);
+        let enc = Encoder::with_bytes_and_padding(bytes, r_padding + l_padding);
         Ok(enc)
+    }
+}
+
+impl APerDecode for BitString {
+    const CONSTRAINTS: Constraints = Constraints {
+        value: None,
+        size: None,
+    };
+
+    /// Construct a `BitString` from an aligned PER encoding.
+    fn from_aper(decoder: &mut Decoder<'_>, constraints: Constraints) -> Result<Self, DecodeError> {
+        let sz_constr = constraints.size.ok_or(DecodeError::MissingSizeConstraint)?;
+        if sz_constr.max().is_none() || sz_constr.max().unwrap() == 0 {
+            return Ok(BitString::with_len(0));
+        }
+
+        let len = sz_constr.max().unwrap() as usize;
+        if len >= 65535 {
+            return Err(DecodeError::NotImplemented);
+        }
+
+        let num_bytes = (len as f64 / 8.).ceil() as usize;
+        let mut content = Vec::with_capacity(num_bytes);
+        decoder.read_to_vec(&mut content, len)?;
+
+        let delta = num_bytes * 8 - len;
+        if delta > 0 && num_bytes > 1 {
+            shift_bytes_left(&mut content, delta);
+        }
+
+        Ok(BitString::with_bytes_and_len(&content, len))
     }
 }

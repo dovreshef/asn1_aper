@@ -1,6 +1,15 @@
-extern crate asn1;
-use asn1::BitString;
-use asn1::aper::{self, APerElement, Constraint, Constraints, Encoding, UNCONSTRAINED};
+use asn1_aper::{
+    APerDecode,
+    APerEncode,
+    BitString,
+    Constraint,
+    Constraints,
+    DecodeError,
+    Decoder,
+    EncodeError,
+    Encoder,
+    UNCONSTRAINED,
+};
 
 #[derive(Debug)]
 struct Foo {
@@ -9,25 +18,74 @@ struct Foo {
     pub baz: Vec<BitString>,
 }
 
-impl APerElement for Foo {
+impl APerEncode for Foo {
     const CONSTRAINTS: Constraints = UNCONSTRAINED;
-    fn from_aper(decoder: &mut aper::Decoder, _: Constraints) -> Result<Self, aper::DecodeError> {
-        let foo = BitString::from_aper(decoder , Constraints {
-            value: None,
-            size: Some(Constraint::new(None, Some(4))),
-        });
 
-        let bar = Vec::<u8>::from_aper(decoder, Constraints {
-            value: None,
-            size: Some(Constraint::new(None, Some(3))),
-        });
+    fn to_aper(&self, _: Constraints) -> Result<Encoder, EncodeError> {
+        let mut enc = self
+            .foo
+            .to_aper(Constraints {
+                value: None,
+                size: Some(Constraint::new(None, Some(4))),
+            })
+            .unwrap();
 
-        let baz = Vec::<BitString>::from_aper(decoder, Constraints {
-            // here the "value" constraint is a constraint on the size of each element
-            value: Some(Constraint::new(None, Some(4))), 
-            // "size" behaves normally 
-            size: Some(Constraint::new(None, Some(2))),
-        });
+        enc.append(
+            &self
+                .bar
+                .to_aper(Constraints {
+                    value: None,
+                    size: Some(Constraint::new(None, Some(3))),
+                })
+                .unwrap(),
+        )
+        .unwrap();
+
+        enc.append(
+            &self
+                .baz
+                .to_aper(Constraints {
+                    // here the "value" constraint is a constraint on the size of each element
+                    value: Some(Constraint::new(None, Some(4))),
+                    // "size" behaves normally
+                    size: Some(Constraint::new(None, Some(2))),
+                })
+                .unwrap(),
+        )
+        .unwrap();
+
+        Ok(enc)
+    }
+}
+
+impl APerDecode for Foo {
+    const CONSTRAINTS: Constraints = UNCONSTRAINED;
+    fn from_aper(decoder: &mut Decoder<'_>, _: Constraints) -> Result<Self, DecodeError> {
+        let foo = BitString::from_aper(
+            decoder,
+            Constraints {
+                value: None,
+                size: Some(Constraint::new(None, Some(4))),
+            },
+        );
+
+        let bar = Vec::<u8>::from_aper(
+            decoder,
+            Constraints {
+                value: None,
+                size: Some(Constraint::new(None, Some(3))),
+            },
+        );
+
+        let baz = Vec::<BitString>::from_aper(
+            decoder,
+            Constraints {
+                // here the "value" constraint is a constraint on the size of each element
+                value: Some(Constraint::new(None, Some(4))),
+                // "size" behaves normally
+                size: Some(Constraint::new(None, Some(2))),
+            },
+        );
 
         if foo.is_err() {
             return Err(foo.err().unwrap());
@@ -39,32 +97,11 @@ impl APerElement for Foo {
             return Err(baz.err().unwrap());
         }
 
-        Ok(Foo{
+        Ok(Foo {
             foo: foo.unwrap(),
             bar: bar.unwrap(),
             baz: baz.unwrap(),
         })
-    }
-    
-    fn to_aper(&self, _: Constraints) -> Result<Encoding, aper::EncodeError> {
-        let mut enc = self.foo.to_aper(Constraints {
-            value: None,
-            size: Some(Constraint::new(None, Some(4))),
-        }).unwrap();
-
-        enc.append(&self.bar.to_aper(Constraints {
-            value: None,
-            size: Some(Constraint::new(None, Some(3))),
-        }).unwrap()).unwrap();
-
-        enc.append(&self.baz.to_aper(Constraints {
-            // here the "value" constraint is a constraint on the size of each element
-            value: Some(Constraint::new(None, Some(4))), 
-            // "size" behaves normally 
-            size: Some(Constraint::new(None, Some(2))),
-        }).unwrap()).unwrap();
-
-        Ok(enc)
     }
 }
 
@@ -86,7 +123,7 @@ fn encode_foo() {
 fn decode_foo() {
     // [14, 3, 70, 79, 79, 2, 224, 224]
     let data = b"\x0e\x03\x46\x4f\x4f\x02\xee";
-    let mut d = aper::Decoder::new(data);
+    let mut d = Decoder::new(data);
     d.read(4).unwrap(); // strip left-padding
     let f = Foo::from_aper(&mut d, UNCONSTRAINED).unwrap();
     let target_bar = vec![0x46 as u8, 0x4f as u8, 0x4f as u8];

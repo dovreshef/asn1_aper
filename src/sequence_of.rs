@@ -1,13 +1,41 @@
-use aper::{APerElement, Constraints, Decoder, DecodeError, Encoding, EncodeError, encode_length};
+use crate::{
+    encode_length,
+    APerDecode,
+    APerEncode,
+    Constraints,
+    DecodeError,
+    Decoder,
+    EncodeError,
+    Encoder,
+};
 
-impl<T: APerElement> APerElement for Vec<T> {
+impl<T: APerEncode> APerEncode for Vec<T> {
+    const CONSTRAINTS: Constraints = Constraints {
+        value: None,
+        size: None,
+    };
+
+    fn to_aper(&self, constraints: Constraints) -> Result<Encoder, EncodeError> {
+        let mut enc = encode_length(self.len())?;
+        for x in self {
+            let val = x.to_aper(Constraints {
+                value: None,
+                size: constraints.value,
+            })?;
+            enc.append(&val)?;
+        }
+        Ok(enc)
+    }
+}
+
+impl<T: APerDecode> APerDecode for Vec<T> {
     const CONSTRAINTS: Constraints = Constraints {
         value: None,
         size: None,
     };
 
     /// Read a `Vec[T]` from an aligned PER encoding.
-    fn from_aper(decoder: &mut Decoder, constraints: Constraints) -> Result<Self, DecodeError> {
+    fn from_aper(decoder: &mut Decoder<'_>, constraints: Constraints) -> Result<Self, DecodeError> {
         if constraints.size.is_none() {
             return Err(DecodeError::MissingSizeConstraint);
         }
@@ -44,32 +72,10 @@ impl<T: APerElement> APerElement for Vec<T> {
         };
         let mut content: Vec<T> = Vec::with_capacity(len);
         for _ in 0..len {
-            let ret = T::from_aper(decoder, el_constrs);
-            if ret.is_err() {
-                return Err(ret.err().unwrap());
-            }
-            content.push(ret.unwrap());
+            let val = T::from_aper(decoder, el_constrs)?;
+            content.push(val);
         }
 
         Ok(content)
-    }
-
-    fn to_aper(&self, constraints: Constraints) -> Result<Encoding, EncodeError> {
-        let ret = encode_length(self.len());
-        if ret.is_err() {
-            return Err(ret.err().unwrap());
-        }
-        let mut enc = ret.unwrap();
-        for x in self {
-            let ret = enc.append(&x.to_aper(Constraints {
-                    value: None,
-                    size: constraints.value,
-                })
-                .unwrap());
-            if ret.is_err() {
-                return Err(ret.err().unwrap());
-            }
-        }
-        Ok(enc)
     }
 }

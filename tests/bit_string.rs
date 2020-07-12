@@ -1,6 +1,11 @@
-extern crate asn1;
-use asn1::BitString;
-use asn1::aper::{self, APerElement, Constraint, Constraints};
+use asn1_aper::{
+    APerDecode,
+    APerEncode,
+    BitString,
+    Constraint,
+    Constraints,
+    Decoder,
+};
 
 #[test]
 fn get_set() {
@@ -20,11 +25,15 @@ fn get_set_non_boundary() {
 #[test]
 fn decode_padded() {
     let data = b"\x00\xe0\x00";
-    let mut d = aper::Decoder::new(data);
-    let b = BitString::from_aper(&mut d, Constraints {
-        value: None,
-        size: Some(Constraint::new(None, Some(20))),
-    }).unwrap();
+    let mut d = Decoder::new(data);
+    let b = BitString::from_aper(
+        &mut d,
+        Constraints {
+            value: None,
+            size: Some(Constraint::new(None, Some(20))),
+        },
+    )
+    .unwrap();
     println!("{:?}", b);
     for i in 0..20 {
         if i == 17 || i == 18 || i == 19 {
@@ -38,12 +47,16 @@ fn decode_padded() {
 #[test]
 fn decode_padded_small() {
     let data = b"\x0e"; // 0000 1110
-    let mut d = aper::Decoder::new(data);
+    let mut d = Decoder::new(data);
     d.read(4).unwrap();
-    let b = BitString::from_aper(&mut d, Constraints {
-        value: None,
-        size: Some(Constraint::new(None, Some(4))),
-    }).unwrap();
+    let b = BitString::from_aper(
+        &mut d,
+        Constraints {
+            value: None,
+            size: Some(Constraint::new(None, Some(4))),
+        },
+    )
+    .unwrap();
     println!("{:?}", b);
     for i in 0..4 {
         if i == 1 || i == 2 || i == 3 {
@@ -57,11 +70,15 @@ fn decode_padded_small() {
 #[test]
 fn decode_unpadded() {
     let data = b"\x00\x00\xe0";
-    let mut d = aper::Decoder::new(data);
-    let b = BitString::from_aper(&mut d, Constraints {
-        value: None,
-        size: Some(Constraint::new(None, Some(24))),
-    }).unwrap();
+    let mut d = Decoder::new(data);
+    let b = BitString::from_aper(
+        &mut d,
+        Constraints {
+            value: None,
+            size: Some(Constraint::new(None, Some(24))),
+        },
+    )
+    .unwrap();
     println!("{:?}", b);
     for i in 0..24 {
         if i == 5 || i == 6 || i == 7 {
@@ -76,8 +93,13 @@ fn decode_unpadded() {
 fn encode_padded_small() {
     let bs = BitString::with_bytes_and_len(&vec![0x0e as u8], 4);
     let target: Vec<u8> = vec![0xe0];
-    assert_eq!(target, *bs.to_aper(Constraints{
-        value: None,
-        size: Some(Constraint::new(None, Some(4))),
-    }).unwrap().bytes());
+    assert_eq!(
+        target,
+        *bs.to_aper(Constraints {
+            value: None,
+            size: Some(Constraint::new(None, Some(4))),
+        })
+        .unwrap()
+        .bytes()
+    );
 }

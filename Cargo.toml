@@ -1,9 +1,10 @@
 [package]
-name = "asn1"
-version = "0.0.0"
+name = "asn1_aper"
+version = "0.1.0"
 authors = ["Melvin Walls <mwalls67@gmail.com>"]
-repository = "https://github.com/melvinw/rust-asn1"
-description = "ASN.1 (de)serializer for Rust"
+repository = "https://github.com/dovreshef/asn1_aper"
+description = "ASN.1 aligned PER (de)serializer for Rust"
+edition = "2018"
 
 [lib]
 doctest = false

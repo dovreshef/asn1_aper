@@ -1,1 +1,0 @@
-initSidebarItems({"mod":[["aper","Tools for encoding and decoding ASN.1 messages of the Aligned PER flavor."]],"struct":[["BitString","A bit string."]],"type":[["ExtensionMarker","A marker for extendable types."],["SequencePreamble","A preamble that describes the properties of the sequence type it preceeds."]]});

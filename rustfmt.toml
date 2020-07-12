@@ -1,5 +1,8 @@
 max_width = 120
-ideal_width = 120
-reorder_imports = true
-write_mode="Overwrite"
-report_fixme="Always"
+edition = "2018"
+version = "Two"
+unstable_features = true
+imports_layout = "Vertical"
+struct_lit_single_line = true
+use_field_init_shorthand = true
+merge_imports = true

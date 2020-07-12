@@ -1,28 +1,44 @@
-use aper::{APerElement, Constraints, Decoder, DecodeError, Encoding, EncodeError, encode_int};
-use std::{i8, i16, i32, u8, u16, u32};
+use crate::{
+    encode_int,
+    APerDecode,
+    APerEncode,
+    Constraints,
+    DecodeError,
+    Decoder,
+    EncodeError,
+    Encoder,
+};
+use std::{
+    i16,
+    i32,
+    i8,
+    u16,
+    u32,
+    u8,
+};
 
 macro_rules! int_impl {
     ($t:ident) => {
-        impl APerElement for $t {
+        impl APerEncode for $t {
+            const CONSTRAINTS: Constraints = Constraints {
+                value: None,
+                size: None,
+            };
+            fn to_aper(&self, _: Constraints) -> Result<Encoder, EncodeError> {
+                let val = encode_int(*self as i64, Some($t::MIN as i64), Some($t::MAX as i64))?;
+                Ok(val)
+            }
+        }
+
+        impl APerDecode for $t {
             const CONSTRAINTS: Constraints = Constraints {
                 value: None,
                 size: None,
             };
             /// Read an `$t` from an aligned PER encoding.
-            fn from_aper(decoder: &mut Decoder, _: Constraints) -> Result<Self, DecodeError> {
-                let ret = decoder.decode_int(Some($t::MIN as i64), Some($t::MAX as i64));
-                if ret.is_err() {
-                    return Err(ret.err().unwrap());
-                }
-                Ok(ret.unwrap() as $t)
-            }
-
-            fn to_aper(&self, _: Constraints) -> Result<Encoding, EncodeError> {
-                let ret = encode_int(*self as i64, Some($t::MIN as i64), Some($t::MAX as i64));
-                if ret.is_err() {
-                    return Err(ret.err().unwrap());
-                }
-                Ok(ret.unwrap())
+            fn from_aper(decoder: &mut Decoder<'_>, _: Constraints) -> Result<Self, DecodeError> {
+                let val = decoder.decode_int(Some($t::MIN as i64), Some($t::MAX as i64))?;
+                Ok(val as $t)
             }
         }
     };
